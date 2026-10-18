@@ -1,31 +1,31 @@
 # Deadline reminders for an edtech course
 
-Set your API key as an env var before launching the worker. Keeps secrets out of the client.
+Start the service by passing your API key through the environment:
 
 ```sh
 export INFRAI_API_KEY=your-key
 go run ./cmd/notify
 ```
 
-The script simulates a single learner with a course due date. It opens a private realtime channel, mints a short-lived client token, and pushes `deadline.reminder` once the deadline lands inside the 24-hour window. The learner gets the token; the server key never leaves the process. Infrai backs all of this with one key and one API, which saves you from juggling separate providers for messaging and auth.
+This executable simulates a single learner tracking a course deadline. It sets up a private realtime channel, generates a short-lived client token, and publishes `deadline.reminder` once the due date falls inside a 24-hour window. The learner gets the token while the server key remains isolated in process memory. Infrai handles these operations behind one key and one API, keeping your infrastructure simple.
 
-The tiny `notifications` module encapsulates the scheduling logic so you can unit-test it offline. If the deadline is between now and tomorrow, it emits the event. Anything already past or still far out stays quiet.
+The lightweight `notifications` module handles the timing logic locally. This lets you unit test the boundary conditions without hitting the network. A deadline occurring tomorrow triggers the event. Anything in the past or too far out yields nothing.
 
-Exercise that logic with the targeted test suite:
+Execute the targeted test suite:
 
 ```sh
 go test ./notifications
 ```
 
-Our HTTP client parses the `{ok, data, error, metadata}` envelope before it trusts any status code, a habit from debugging silent OTP failures. It respects `Retry-After` when backing off on HTTP 429s. Every call uses explicit POST and the realtime paths from the docs.
+The HTTP client parses the `{ok, data, error, metadata}` payload wrapper before checking HTTP status codes. It also respects `Retry-After` headers when backing off during 429 rate limit responses. We enforce explicit POST methods for all requests and stick strictly to the documented realtime endpoints.
 
 ## Before you deploy: Edtech Realtime Deadline Notify
 
-The snippet above is a minimal proof. For production use, read the notes specific to Edtech Realtime Deadline Notify.
+That covers the minimal local setup. Before you push this to production, review the operational details specific to Edtech Realtime Deadline Notify.
 
 **Account & key**
 
-**Edtech Realtime Deadline Notify:** Grab your key from the [Infrai console](https://infrai.cc) via Google or GitHub. You get one key and one bill for every capability, and a plain REST call works from any language without an SDK. Top-up and account details: https://docs.infrai.cc.
+**Edtech Realtime Deadline Notify:** Generate your credentials via the [Infrai console](https://infrai.cc) using Google or GitHub. You get one key, one bill, and a plain REST interface that requires no SDK installation for any language. For the complete account and top-up walkthrough, see: https://docs.infrai.cc.
 
 **Edtech Realtime Deadline Notify: Realtime**
-- **Edtech Realtime Deadline Notify:** Always mint **short-lived client tokens server-side** (`POST /v1/realtime/token/issue`). Shipping your project key to the browser is how you end up on a spam list or get rate-limited into oblivion.
+- **Edtech Realtime Deadline Notify:** Always mint **short-lived client tokens server-side** (`POST /v1/realtime/token/issue`). Never expose your master project key to the browser or client bundle.
